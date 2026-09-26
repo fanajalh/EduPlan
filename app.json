@@ -55,6 +55,33 @@
           "icon": "./assets/notification-icon.png",
           "color": "#6284F6"
         }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "JadwalWidget",
+              "label": "Jadwal EduPlaner",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "description": "Jadwal kelas & pelajaran aktif hari ini",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "TugasWidget",
+              "label": "Tugas EduPlaner",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "description": "Daftar tugas & PR yang mendekati deadline",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
       ]
     ]
   }

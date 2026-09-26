@@ -10,10 +10,26 @@ import {
   PlusJakartaSans_700Bold,
   PlusJakartaSans_800ExtraBold,
 } from '@expo-google-fonts/plus-jakarta-sans';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Platform } from 'react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { AppProvider } from '@/context/AppContext';
 import { Colors } from '@/constants/theme';
 import { HeadsUpNotificationBanner } from '@/components/HeadsUpNotificationBanner';
+
+// Register Android Home Screen Widgets in standalone APK builds (safely skipped in Expo Go)
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+if (Platform.OS === 'android' && !isExpoGo) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { registerWidgetTaskHandler } = require('react-native-android-widget');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { widgetTaskHandler } = require('@/widgets/widgetTaskHandler');
+    registerWidgetTaskHandler(widgetTaskHandler);
+  } catch (err) {
+    console.log('[Widget] Registration error:', err);
+  }
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
