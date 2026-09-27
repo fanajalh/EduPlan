@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
-  Alert,
   Platform,
   StatusBar,
 } from 'react-native';
@@ -19,7 +18,12 @@ import { useApp } from '@/context/AppContext';
 import { Colors, Fonts } from '@/constants/theme';
 import { CuteCharacter, CharacterType } from '@/components/CuteCharacter';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
+import { ModernAlertModal, AlertType } from '@/components/ModernAlertModal';
+import { FormInput } from '@/components/FormInput';
 import { FileExportService } from '@/services/fileExport';
+import { syncWidgetsData } from '@/widgets/widgetSync';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AVATAR_OPTIONS: { id: CharacterType; label: string }[] = [
@@ -47,11 +51,30 @@ export default function ProfilScreen() {
     materials,
     reminders,
     exportDatabaseBackup,
+    importDatabaseBackup,
   } = useApp();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [storageModalVisible, setStorageModalVisible] = useState(false);
+  const [pasteModalVisible, setPasteModalVisible] = useState(false);
+  const [pastedJson, setPastedJson] = useState('');
+
+  // Styled alert state
+  const [alertInfo, setAlertInfo] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: AlertType;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirmAction?: () => void;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'warning',
+  });
 
   // Edit form states
   const [name, setName] = useState(profile.name);
@@ -85,7 +108,13 @@ export default function ProfilScreen() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Perhatian', 'Nama tidak boleh kosong!');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      setAlertInfo({
+        visible: true,
+        type: 'warning',
+        title: 'Bidang Wajib Diisi',
+        message: 'Nama lengkap tidak boleh kosong.',
+      });
       return;
     }
 
@@ -102,6 +131,94 @@ export default function ProfilScreen() {
     });
 
     setModalVisible(false);
+  };
+
+  const handlePickBackupFile = async () => {
+    try {
+      Haptics.selectionAsync().catch(() => {});
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/json',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const fileUri = result.assets[0].uri;
+      const content = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      await processBackupJson(content);
+    } catch (err) {
+      console.warn('Error picking backup file:', err);
+      setAlertInfo({
+        visible: true,
+        type: 'error',
+        title: 'Gagal Membaca Berkas',
+        message: 'Tidak dapat membuka berkas cadangan yang dipilih.',
+      });
+    }
+  };
+
+  const processBackupJson = async (jsonString: string) => {
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (!parsed || typeof parsed !== 'object') {
+        throw new Error('Invalid JSON format');
+      }
+
+      const schedCount = Array.isArray(parsed.schedules) ? parsed.schedules.length : 0;
+      const taskCount = Array.isArray(parsed.tasks) ? parsed.tasks.length : 0;
+      const matCount = Array.isArray(parsed.materials) ? parsed.materials.length : 0;
+      const noteCount = Array.isArray(parsed.notes) ? parsed.notes.length : 0;
+      const remCount = Array.isArray(parsed.reminders) ? parsed.reminders.length : 0;
+
+      const summaryText = `Ditemukan data cadangan:\n• ${schedCount} Jadwal Kelas\n• ${taskCount} Tugas & PR\n• ${matCount} Materi Belajar\n• ${noteCount} Catatan\n• ${remCount} Pengingat\n\nApakah Anda ingin memulihkan dan mengganti data lokal saat ini dengan data cadangan ini?`;
+
+      setAlertInfo({
+        visible: true,
+        type: 'info',
+        title: 'Pulihkan Cadangan Data?',
+        message: summaryText,
+        confirmText: 'Terapkan Sekarang',
+        cancelText: 'Batal',
+        onConfirmAction: async () => {
+          setAlertInfo((prev) => ({ ...prev, visible: false }));
+          const ok = await importDatabaseBackup(jsonString);
+          if (ok) {
+            syncWidgetsData();
+            setStorageModalVisible(false);
+            setPasteModalVisible(false);
+            setPastedJson('');
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+            setTimeout(() => {
+              setAlertInfo({
+                visible: true,
+                type: 'success',
+                title: 'Data Berhasil Dipulihkan 🎉',
+                message: 'Seluruh jadwal, tugas, catatan, dan profil Anda telah diperbarui dari cadangan.',
+              });
+            }, 350);
+          } else {
+            setAlertInfo({
+              visible: true,
+              type: 'error',
+              title: 'Gagal Memulihkan Data',
+              message: 'Format data berkas cadangan tidak valid atau rusak.',
+            });
+          }
+        },
+      });
+    } catch {
+      setAlertInfo({
+        visible: true,
+        type: 'error',
+        title: 'Format Tidak Valid',
+        message: 'Teks atau berkas yang Anda pilih bukan berkas cadangan EduPlaner yang valid.',
+      });
+    }
   };
 
   const handleResetData = () => {
@@ -334,7 +451,7 @@ export default function ProfilScreen() {
 
         {/* App Version Footer */}
         <View style={styles.footerWrap}>
-          <Text style={styles.footerText}>EduPlaner • Versi 1.0.0</Text>
+          <Text style={styles.footerText}>EduPlaner • Versi 2.1.4</Text>
         </View>
       </ScrollView>
 
@@ -363,7 +480,12 @@ export default function ProfilScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalForm}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={styles.modalForm}
+              contentContainerStyle={{ paddingBottom: 16 }}
+              keyboardShouldPersistTaps="handled"
+            >
               {/* Avatar Selector */}
               <Text style={styles.fieldLabel}>Pilih Karakter Avatar</Text>
               <View style={styles.avatarPickerRow}>
@@ -394,68 +516,69 @@ export default function ProfilScreen() {
               </View>
 
               {/* Name */}
-              <Text style={styles.fieldLabel}>Nama Lengkap *</Text>
-              <TextInput
-                style={styles.textInput}
+              <FormInput
+                label="Nama Lengkap"
+                required
+                icon="person-outline"
                 value={name}
                 onChangeText={setName}
                 placeholder="Nama Anda"
-                placeholderTextColor={Colors.textMuted}
+                onClear={() => setName('')}
               />
 
               {/* School */}
-              <Text style={styles.fieldLabel}>Sekolah / Kampus</Text>
-              <TextInput
-                style={styles.textInput}
+              <FormInput
+                label="Sekolah / Kampus"
+                icon="school-outline"
                 value={school}
                 onChangeText={setSchool}
                 placeholder="Nama institusi pendidikan"
-                placeholderTextColor={Colors.textMuted}
+                onClear={() => setSchool('')}
               />
 
               {/* Major & Grade */}
               <View style={styles.formRowTwo}>
                 <View style={styles.formColHalf}>
-                  <Text style={styles.fieldLabel}>Jurusan</Text>
-                  <TextInput
-                    style={styles.textInput}
+                  <FormInput
+                    label="Jurusan"
+                    icon="book-outline"
                     value={major}
                     onChangeText={setMajor}
                     placeholder="Contoh: IPA / TI"
-                    placeholderTextColor={Colors.textMuted}
+                    onClear={() => setMajor('')}
                   />
                 </View>
                 <View style={styles.formColHalf}>
-                  <Text style={styles.fieldLabel}>Kelas / Semester</Text>
-                  <TextInput
-                    style={styles.textInput}
+                  <FormInput
+                    label="Kelas / Semester"
+                    icon="layers-outline"
                     value={grade}
                     onChangeText={setGrade}
                     placeholder="Contoh: Semester 4"
-                    placeholderTextColor={Colors.textMuted}
+                    onClear={() => setGrade('')}
                   />
                 </View>
               </View>
 
               {/* Student ID */}
-              <Text style={styles.fieldLabel}>NIS / NIM</Text>
-              <TextInput
-                style={styles.textInput}
+              <FormInput
+                label="NIS / NIM"
+                icon="card-outline"
                 value={studentId}
                 onChangeText={setStudentId}
-                placeholder="Nomor induk siswa / mahasiswa"
-                placeholderTextColor={Colors.textMuted}
+                placeholder="Nomor induk siswa"
                 keyboardType="numeric"
+                onClear={() => setStudentId('')}
               />
 
               {/* Bio / Motto */}
-              <Text style={styles.fieldLabel}>Motto / Status Belajar</Text>
-              <TextInput
-                style={styles.textInput}
+              <FormInput
+                label="Motto / Status Belajar"
+                icon="chatbubble-ellipses-outline"
                 value={bio}
                 onChangeText={setBio}
-                placeholder="Contoh: Happiness of being single is infinite"
-                placeholderTextColor={Colors.textMuted}
+                placeholder="Contoh: Belajar dengan tekun & gembira"
+                onClear={() => setBio('')}
               />
 
               {/* Save Button */}
@@ -587,12 +710,38 @@ export default function ProfilScreen() {
                     await FileExportService.downloadDatabaseBackup(backup);
                     setStorageModalVisible(false);
                   } catch {
-                    Alert.alert('Gagal', 'Tidak dapat membuat cadangan data.');
+                    setAlertInfo({
+                      visible: true,
+                      type: 'error',
+                      title: 'Gagal Membuat Cadangan',
+                      message: 'Tidak dapat membuat atau mengunduh berkas cadangan data.',
+                    });
                   }
                 }}
               >
                 <Ionicons name="download-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.storageBackupBtnText}>Unduh Cadangan (Backup .json)</Text>
+                <Text style={styles.storageBackupBtnText}>Unduh Cadangan (.json)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.storageRestoreBtn}
+                activeOpacity={0.88}
+                onPress={handlePickBackupFile}
+              >
+                <Ionicons name="folder-open-outline" size={18} color="#2563EB" style={{ marginRight: 6 }} />
+                <Text style={styles.storageRestoreBtnText}>Pulihkan dari Berkas (.json)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.storagePasteBtn}
+                activeOpacity={0.88}
+                onPress={() => {
+                  setStorageModalVisible(false);
+                  setPasteModalVisible(true);
+                }}
+              >
+                <Ionicons name="clipboard-outline" size={18} color="#0D9488" style={{ marginRight: 6 }} />
+                <Text style={styles.storagePasteBtnText}>Tempel Teks Cadangan (JSON)</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -606,6 +755,92 @@ export default function ProfilScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal Tempel Teks Cadangan JSON */}
+      <Modal
+        visible={pasteModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPasteModalVisible(false)}
+      >
+        <View style={styles.storageModalOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setPasteModalVisible(false)}
+          />
+          <View style={styles.pasteModalCard}>
+            <View style={styles.storageHeaderRow}>
+              <View style={[styles.storageHeaderIconWrap, { backgroundColor: '#CCFBF1' }]}>
+                <Ionicons name="clipboard-outline" size={22} color="#0D9488" />
+              </View>
+              <View style={{ flex: 1, justifyContent: 'center' }}>
+                <Text style={styles.storageModalTitle}>Tempel Data Cadangan</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setPasteModalVisible(false)}
+                style={styles.storageCloseBtn}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={18} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.storageModalDesc}>
+              Tempelkan teks JSON cadangan yang telah Anda salin sebelumnya untuk memulihkan jadwal, tugas, dan materi Anda.
+            </Text>
+
+            <TextInput
+              style={styles.pasteJsonInput}
+              value={pastedJson}
+              onChangeText={setPastedJson}
+              placeholder={`{\n  "version": 1,\n  "profile": { ... },\n  "schedules": [ ... ]\n}`}
+              placeholderTextColor="#94A3B8"
+              multiline
+              textAlignVertical="top"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <View style={styles.pasteActionRow}>
+              <TouchableOpacity
+                style={styles.pasteCancelBtn}
+                onPress={() => {
+                  setPasteModalVisible(false);
+                  setPastedJson('');
+                }}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.pasteCancelBtnText}>Batal</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.pasteApplyBtn,
+                  !pastedJson.trim() && { opacity: 0.5 },
+                ]}
+                disabled={!pastedJson.trim()}
+                onPress={() => processBackupJson(pastedJson.trim())}
+                activeOpacity={0.88}
+              >
+                <Ionicons name="checkmark-done" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.pasteApplyBtnText}>Pulihkan Data</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <ModernAlertModal
+        visible={alertInfo.visible}
+        title={alertInfo.title}
+        message={alertInfo.message}
+        type={alertInfo.type}
+        confirmText={alertInfo.confirmText}
+        cancelText={alertInfo.cancelText}
+        onConfirm={alertInfo.onConfirmAction}
+        onClose={() => setAlertInfo((prev) => ({ ...prev, visible: false }))}
+      />
     </View>
   );
 }
@@ -777,7 +1012,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     paddingHorizontal: 22,
     paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 36 : 28,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
     maxHeight: '90%',
   },
   sheetHandle: {
@@ -1028,5 +1263,90 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
     fontSize: 13.5,
     color: '#64748B',
+  },
+  storageRestoreBtn: {
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1.5,
+    borderColor: '#BFDBFE',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storageRestoreBtnText: {
+    fontFamily: Fonts.bold,
+    fontSize: 14,
+    color: '#2563EB',
+  },
+  storagePasteBtn: {
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1.5,
+    borderColor: '#99F6E4',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storagePasteBtnText: {
+    fontFamily: Fonts.bold,
+    fontSize: 14,
+    color: '#0D9488',
+  },
+  pasteModalCard: {
+    width: '92%',
+    maxHeight: '85%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 25,
+    elevation: 10,
+  },
+  pasteJsonInput: {
+    height: 180,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    padding: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontSize: 12,
+    color: '#0F172A',
+    marginBottom: 16,
+  },
+  pasteActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  pasteCancelBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pasteCancelBtnText: {
+    fontFamily: Fonts.bold,
+    fontSize: 13.5,
+    color: '#64748B',
+  },
+  pasteApplyBtn: {
+    flex: 2,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#0D9488',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pasteApplyBtnText: {
+    fontFamily: Fonts.bold,
+    fontSize: 14,
+    color: '#FFFFFF',
   },
 });

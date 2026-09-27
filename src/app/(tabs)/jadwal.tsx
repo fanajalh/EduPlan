@@ -5,9 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Modal,
   TextInput,
-  Alert,
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
@@ -23,6 +23,8 @@ import { FileExportService } from '@/services/fileExport';
 import { EmptyState } from '@/components/EmptyState';
 import { CuteCharacter, CharacterType } from '@/components/CuteCharacter';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
+import { ModernAlertModal, AlertType } from '@/components/ModernAlertModal';
+import { FormInput } from '@/components/FormInput';
 
 const DAYS: DayOfWeek[] = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
@@ -88,6 +90,19 @@ export default function JadwalScreen() {
   const [teacher, setTeacher] = useState('');
   const [color, setColor] = useState(PRESET_COLORS[0]);
 
+  // Styled Alert modal state
+  const [alertInfo, setAlertInfo] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: AlertType;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'warning',
+  });
+
   const filteredSchedules = schedules
     .filter((s) => s.day === selectedDay)
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -124,7 +139,13 @@ export default function JadwalScreen() {
 
   const handleSave = async () => {
     if (!subject.trim()) {
-      Alert.alert('Perhatian', 'Nama mata pelajaran wajib diisi!');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      setAlertInfo({
+        visible: true,
+        type: 'warning',
+        title: 'Bidang Wajib Diisi',
+        message: 'Silakan masukkan nama mata pelajaran terlebih dahulu sebelum menyimpan.',
+      });
       return;
     }
 
@@ -198,7 +219,7 @@ export default function JadwalScreen() {
 
           <TouchableOpacity
             style={styles.headerCircleBtn}
-            onPress={() => router.push('/reminder')}
+            onPress={() => router.push('/notifikasi' as any)}
             activeOpacity={0.7}
           >
             <Ionicons name="notifications-outline" size={20} color={Colors.text} />
@@ -360,7 +381,7 @@ export default function JadwalScreen() {
         transparent
         onRequestClose={() => setDetailModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <View style={styles.detailModalOverlay}>
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
@@ -437,11 +458,11 @@ export default function JadwalScreen() {
       <Modal visible={modalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          enabled={Platform.OS === 'ios'}
           style={styles.modalOverlay}
         >
-          <TouchableOpacity
+          <Pressable
             style={StyleSheet.absoluteFill}
-            activeOpacity={1}
             onPress={() => setModalVisible(false)}
           />
           <View style={styles.modalContent}>
@@ -464,15 +485,18 @@ export default function JadwalScreen() {
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.formScrollContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="none"
               bounces={false}
             >
-              <Text style={[styles.label, { marginTop: 4 }]}>Mata Pelajaran *</Text>
-              <TextInput
-                style={styles.input}
+              <FormInput
+                label="Mata Pelajaran"
+                required
+                icon="book-outline"
                 placeholder="Contoh: Mathematics / Sejarah"
-                placeholderTextColor={Colors.textMuted}
                 value={subject}
                 onChangeText={setSubject}
+                onClear={() => setSubject('')}
               />
 
               <Text style={styles.label}>Hari Belajar</Text>
@@ -508,8 +532,10 @@ export default function JadwalScreen() {
                       style={styles.timeTextInput}
                       placeholder="08:00"
                       placeholderTextColor={Colors.textMuted}
+                      cursorColor={Colors.primary}
                       value={startTime}
                       onChangeText={setStartTime}
+                      blurOnSubmit={false}
                     />
                   </View>
                 </View>
@@ -521,29 +547,31 @@ export default function JadwalScreen() {
                       style={styles.timeTextInput}
                       placeholder="09:30"
                       placeholderTextColor={Colors.textMuted}
+                      cursorColor={Colors.primary}
                       value={endTime}
                       onChangeText={setEndTime}
+                      blurOnSubmit={false}
                     />
                   </View>
                 </View>
               </View>
 
-              <Text style={styles.label}>Ruangan / Laboratorium</Text>
-              <TextInput
-                style={styles.input}
+              <FormInput
+                label="Ruangan / Laboratorium"
+                icon="location-outline"
                 placeholder="Contoh: Lab Komputer / Ruang 302"
-                placeholderTextColor={Colors.textMuted}
                 value={room}
                 onChangeText={setRoom}
+                onClear={() => setRoom('')}
               />
 
-              <Text style={styles.label}>Guru / Dosen Pengampu</Text>
-              <TextInput
-                style={styles.input}
+              <FormInput
+                label="Guru / Dosen Pengampu"
+                icon="person-outline"
                 placeholder="Contoh: Amy Adams, M.Pd"
-                placeholderTextColor={Colors.textMuted}
                 value={teacher}
                 onChangeText={setTeacher}
+                onClear={() => setTeacher('')}
               />
 
               <Text style={styles.label}>Pilih Warna Kartu</Text>
@@ -594,6 +622,14 @@ export default function JadwalScreen() {
         itemName={deletingSchedule?.subject}
         onConfirm={confirmDeleteSchedule}
         onCancel={() => setDeletingSchedule(null)}
+      />
+
+      <ModernAlertModal
+        visible={alertInfo.visible}
+        type={alertInfo.type}
+        title={alertInfo.title}
+        message={alertInfo.message}
+        onConfirm={() => setAlertInfo((prev) => ({ ...prev, visible: false }))}
       />
     </SafeAreaView>
   );
@@ -839,7 +875,7 @@ const styles = StyleSheet.create({
   },
 
   // Detail Sheet Modal
-  modalOverlay: {
+  detailModalOverlay: {
     flex: 1,
     backgroundColor: 'transparent',
     justifyContent: 'flex-end',
@@ -971,6 +1007,11 @@ const styles = StyleSheet.create({
   },
 
   // Add / Edit Modal Sheet
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-end',
+  },
   modalContent: {
     backgroundColor: Colors.card,
     borderTopLeftRadius: 32,
@@ -981,7 +1022,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     paddingHorizontal: 22,
     paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
     maxHeight: '90%',
   },
   dragHandle: {
@@ -1016,7 +1057,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   formScrollContent: {
-    paddingBottom: 4,
+    paddingBottom: 16,
   },
   label: {
     fontFamily: Fonts.bold,

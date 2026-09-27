@@ -5,10 +5,11 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Modal,
   TextInput,
-  Alert,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,6 +23,8 @@ import { Header } from '@/components/Header';
 import { EmptyState } from '@/components/EmptyState';
 import { CuteCharacter, CharacterType } from '@/components/CuteCharacter';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
+import { ModernAlertModal, AlertType } from '@/components/ModernAlertModal';
+import { FormInput } from '@/components/FormInput';
 import Svg, { Path } from 'react-native-svg';
 
 // Exact color palette matching the Jadwal schedule cards
@@ -142,6 +145,19 @@ export default function MateriScreen() {
   const [content, setContent] = useState('');
   const [tagInput, setTagInput] = useState('');
 
+  // Styled alert state
+  const [alertInfo, setAlertInfo] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: AlertType;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'warning',
+  });
+
   // Extract unique subjects
   const subjectList = ['Semua', ...Array.from(new Set(materials.map((m) => m.subject)))];
 
@@ -181,7 +197,13 @@ export default function MateriScreen() {
 
   const handleSave = async () => {
     if (!title.trim() || !content.trim()) {
-      Alert.alert('Perhatian', 'Judul dan isi materi wajib diisi!');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      setAlertInfo({
+        visible: true,
+        type: 'warning',
+        title: 'Bidang Wajib Diisi',
+        message: 'Silakan isi judul dan catatan materi terlebih dahulu sebelum menyimpan.',
+      });
       return;
     }
 
@@ -580,126 +602,7 @@ export default function MateriScreen() {
     </SafeAreaView>
   )}
 
-  {/* Add / Edit Material Modal */}
-  <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setModalVisible(false)}
-          />
-          <View style={styles.modalContent}>
-            <View style={styles.dragHandle} />
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {editingItem ? 'Edit Materi' : 'Tambah Materi Baru'}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setModalVisible(false)}
-                style={styles.modalCloseBtn}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="close" size={18} color="#0F172A" />
-              </TouchableOpacity>
-            </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScrollArea}>
-              <Text style={styles.label}>Judul Materi *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Contoh: Rangkuman Integral & Turunan"
-                placeholderTextColor="#94A3B8"
-                value={title}
-                onChangeText={setTitle}
-              />
-
-              <Text style={styles.label}>Mata Pelajaran</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Contoh: Matematika Peminatan"
-                placeholderTextColor="#94A3B8"
-                value={subject}
-                onChangeText={setSubject}
-              />
-
-              {/* Quick Subject Suggestions */}
-              <View style={styles.quickSuggestionsRow}>
-                {['Matematika', 'Fisika', 'Kimia', 'Biologi', 'Pemrograman', 'Bahasa Inggris'].map(
-                  (sug) => (
-                    <TouchableOpacity
-                      key={sug}
-                      style={styles.quickSugChip}
-                      onPress={() => setSubject(sug)}
-                    >
-                      <Text style={styles.quickSugText}>+ {sug}</Text>
-                    </TouchableOpacity>
-                  )
-                )}
-              </View>
-
-              <Text style={styles.label}>Kategori Modul</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Contoh: Rangkuman Rumus / Modul Teori"
-                placeholderTextColor="#94A3B8"
-                value={category}
-                onChangeText={setCategory}
-              />
-
-              <Text style={styles.label}>Ringkasan Singkat</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Deskripsi 1-2 kalimat tentang materi ini..."
-                placeholderTextColor="#94A3B8"
-                value={summary}
-                onChangeText={setSummary}
-              />
-
-              <Text style={styles.label}>Isi Lengkap Catatan Materi *</Text>
-              <TextInput
-                style={[styles.input, styles.textAreaLarge]}
-                placeholder="Ketik rumus, catatan penting, daftar poin..."
-                placeholderTextColor="#94A3B8"
-                value={content}
-                onChangeText={setContent}
-                multiline
-                numberOfLines={8}
-              />
-
-              <Text style={styles.label}>Label / Tag (Pisahkan dengan koma)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Kalkulus, Rumus Cepat, UTS"
-                placeholderTextColor="#94A3B8"
-                value={tagInput}
-                onChangeText={setTagInput}
-              />
-
-              <TouchableOpacity
-                style={styles.saveBtn}
-                onPress={handleSave}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.saveBtnText}>
-                  {editingItem ? 'Simpan Perubahan' : 'Simpan Catatan Materi'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Delete Button (If editing existing material) */}
-              {editingItem && (
-                <TouchableOpacity
-                  style={styles.deleteModalBtn}
-                  onPress={() => handleDelete(editingItem)}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="trash-outline" size={17} color="#EF4444" style={{ marginRight: 6 }} />
-                  <Text style={styles.deleteModalBtnText}>Hapus Materi Ini</Text>
-                </TouchableOpacity>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
       {/* Action Options Modal for Long-Pressed Card */}
       <Modal
@@ -778,6 +681,114 @@ export default function MateriScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Add / Edit Material Modal */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          enabled={Platform.OS === 'ios'}
+          style={styles.modalOverlay}
+        >
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setModalVisible(false)}
+          />
+          <View style={styles.modalContent}>
+            <View style={styles.dragHandle} />
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editingItem ? 'Edit Materi Pelajaran' : 'Tambah Materi Baru'}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                style={styles.modalCloseBtn}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={20} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 16 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="none"
+              bounces={false}
+            >
+              <FormInput
+                label="Judul Materi / Topik"
+                required
+                icon="book-outline"
+                placeholder="Contoh: Termodinamika & Hukum Gas Ideal"
+                value={title}
+                onChangeText={setTitle}
+                onClear={() => setTitle('')}
+              />
+
+              <FormInput
+                label="Mata Pelajaran"
+                required
+                icon="school-outline"
+                placeholder="Contoh: Fisika Dasar, Biologi Sel, Kimia..."
+                value={subject}
+                onChangeText={setSubject}
+                onClear={() => setSubject('')}
+              />
+
+              <FormInput
+                label="Kategori / Bab"
+                icon="folder-outline"
+                placeholder="Contoh: Bab 4 - Teori Kinetik"
+                value={category}
+                onChangeText={setCategory}
+                onClear={() => setCategory('')}
+              />
+
+              <Text style={styles.label}>Catatan & Rangkuman Materi *</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Tuliskan poin-poin penting, rumus, atau ringkasan materi di sini..."
+                placeholderTextColor={Colors.textMuted}
+                value={content}
+                onChangeText={setContent}
+                multiline
+                numberOfLines={6}
+                blurOnSubmit={false}
+                cursorColor={Colors.primary}
+              />
+
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={handleSave}
+                activeOpacity={0.88}
+              >
+                <Text style={styles.saveBtnText}>
+                  {editingItem ? 'Simpan Perubahan' : 'Simpan Materi'}
+                </Text>
+              </TouchableOpacity>
+
+              {editingItem && (
+                <TouchableOpacity
+                  style={styles.deleteModalBtn}
+                  onPress={() => handleDelete(editingItem)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="trash-outline" size={17} color="#EF4444" style={{ marginRight: 6 }} />
+                  <Text style={styles.deleteModalBtnText}>Hapus Materi Ini</Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <ModernAlertModal
+        visible={alertInfo.visible}
+        type={alertInfo.type}
+        title={alertInfo.title}
+        message={alertInfo.message}
+        onConfirm={() => setAlertInfo((prev) => ({ ...prev, visible: false }))}
+      />
 
       {/* Styled Delete Confirmation Modal */}
       <ConfirmDeleteModal
@@ -1213,7 +1224,7 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     paddingHorizontal: 22,
     paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
     maxHeight: '88%',
   },
   dragHandle: {
@@ -1318,7 +1329,7 @@ const styles = StyleSheet.create({
   },
   actionModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
@@ -1380,5 +1391,11 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
     fontSize: 13.5,
     color: '#64748B',
+  },
+  textArea: {
+    minHeight: 100,
+    height: 110,
+    textAlignVertical: 'top',
+    paddingTop: 12,
   },
 });

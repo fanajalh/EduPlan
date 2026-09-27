@@ -15,6 +15,7 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { AppProvider } from '@/context/AppContext';
 import { Colors } from '@/constants/theme';
 import { HeadsUpNotificationBanner } from '@/components/HeadsUpNotificationBanner';
+import { AlarmRingingModal } from '@/components/AlarmRingingModal';
 
 // Register Android Home Screen Widgets in standalone APK builds (safely skipped in Expo Go)
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
@@ -53,6 +54,7 @@ export default function RootLayout() {
       <AppProvider>
         <StatusBar style="dark" />
         <HeadsUpNotificationBanner />
+        <AlarmRingingModal />
         <Stack
           screenOptions={{
             headerShown: false,

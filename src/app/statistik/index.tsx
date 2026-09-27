@@ -13,7 +13,6 @@ import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp } from '@/context/AppContext';
 import { Colors, Fonts } from '@/constants/theme';
-import { Header } from '@/components/Header';
 import { CuteCharacter, CharacterType } from '@/components/CuteCharacter';
 import { ScheduleItem, DayOfWeek } from '@/types';
 
@@ -270,17 +269,33 @@ export default function StatistikScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <Header
-        title="Statistik"
-        subtitle="Mood & fokus belajar"
-        showBack
-      />
+      {/* Top Bar with Home-style back button */}
+      <View style={styles.topHeader}>
+        <TouchableOpacity
+          style={styles.backCircleBtn}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={22} color={Colors.text} />
+        </TouchableOpacity>
+        <View style={{ width: 44 }} />
+      </View>
 
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Large Editorial Headline (Home Screen Aesthetic) */}
+        <View style={styles.headlineWrapper}>
+          <View style={styles.headlineHiRow}>
+            <Text style={styles.headlineHi}>Statistik Belajar</Text>
+            <CuteCharacter type="smart" size={32} />
+          </View>
+          <Text style={styles.headlineQuestion}>
+            Mood & evaluasi fokus belajar mingguan
+          </Text>
+        </View>
         {/* Segment Selector */}
         <View style={styles.segmentContainer}>
           <TouchableOpacity
@@ -461,6 +476,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  backCircleBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  headlineWrapper: {
+    marginBottom: 18,
+  },
+  headlineHiRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  headlineHi: {
+    fontFamily: Fonts.extraBold,
+    fontSize: 28,
+    color: Colors.text,
+    letterSpacing: -0.5,
+  },
+  headlineQuestion: {
+    fontFamily: Fonts.regular,
+    fontSize: 15,
+    color: Colors.textSecondary,
+    lineHeight: 22,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -487,11 +541,6 @@ const styles = StyleSheet.create({
   },
   segmentBtnActive: {
     backgroundColor: Colors.primary,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 2,
   },
   segmentText: {
     fontFamily: Fonts.bold,

@@ -3,7 +3,7 @@
     "name": "EduPlaner",
     "slug": "eduplaner",
     "scheme": "eduplaner",
-    "version": "1.0.0",
+    "version": "2.1.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -26,12 +26,17 @@
         "backgroundColor": "#FFFFFF",
         "barStyle": "dark-content"
       },
+      "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "READ_CALENDAR",
         "WRITE_CALENDAR",
         "POST_NOTIFICATIONS",
         "VIBRATE",
-        "RECEIVE_BOOT_COMPLETED"
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM",
+        "USE_EXACT_ALARM",
+        "WAKE_LOCK",
+        "SYSTEM_ALERT_WINDOW"
       ]
     },
     "web": {
@@ -61,8 +66,38 @@
         {
           "widgets": [
             {
+              "name": "WidgetKecil",
+              "label": "EduPlaner Ringkas (2x2)",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "description": "Ringkasan cepat agenda & status belajar",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "WidgetSedang",
+              "label": "EduPlaner Jadwal & Tugas (4x2)",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "description": "Jadwal aktif & tugas mendesak hari ini",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "WidgetBesar",
+              "label": "EduPlaner Dashboard (4x4)",
+              "minWidth": "250dp",
+              "minHeight": "250dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 4,
+              "description": "Dashboard lengkap jadwal & tugas mendatang",
+              "updatePeriodMillis": 1800000
+            },
+            {
               "name": "JadwalWidget",
-              "label": "Jadwal EduPlaner",
+              "label": "Jadwal EduPlaner (4x2)",
               "minWidth": "250dp",
               "minHeight": "110dp",
               "targetCellWidth": 4,
@@ -72,7 +107,7 @@
             },
             {
               "name": "TugasWidget",
-              "label": "Tugas EduPlaner",
+              "label": "Tugas EduPlaner (4x2)",
               "minWidth": "250dp",
               "minHeight": "110dp",
               "targetCellWidth": 4,

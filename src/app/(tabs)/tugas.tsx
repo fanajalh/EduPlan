@@ -5,9 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Modal,
   TextInput,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +18,8 @@ import { Colors, Fonts } from '@/constants/theme';
 import { TaskItem, TaskPriority } from '@/types';
 import { FileExportService } from '@/services/fileExport';
 import { CuteCharacter } from '@/components/CuteCharacter';
+import { ModernAlertModal, AlertType } from '@/components/ModernAlertModal';
+import { FormInput } from '@/components/FormInput';
 
 const WEEKDAY_BASE = [
   { day: 'Mon', full: 'Senin' },
@@ -59,6 +61,19 @@ export default function TugasScreen() {
   const [deadlineTime, setDeadlineTime] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('sedang');
   const [notes, setNotes] = useState('');
+
+  // Styled alert state
+  const [alertInfo, setAlertInfo] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: AlertType;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'warning',
+  });
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -177,7 +192,13 @@ export default function TugasScreen() {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert('Perhatian', 'Judul tugas wajib diisi!');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      setAlertInfo({
+        visible: true,
+        type: 'warning',
+        title: 'Bidang Wajib Diisi',
+        message: 'Silakan masukkan judul tugas terlebih dahulu sebelum menyimpan.',
+      });
       return;
     }
 
@@ -459,12 +480,11 @@ export default function TugasScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity
+          <Pressable
             style={StyleSheet.absoluteFill}
-            activeOpacity={1}
             onPress={() => setModalVisible(false)}
           />
-          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 24) + 16 }]}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 16) }]}>
             <View style={styles.dragHandle} />
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
@@ -479,42 +499,45 @@ export default function TugasScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
-              <Text style={[styles.label, { marginTop: 4 }]}>Judul Tugas *</Text>
-              <TextInput
-                style={styles.input}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 16 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              <FormInput
+                label="Judul Tugas"
+                required
+                icon="document-text-outline"
                 placeholder="Contoh: Laporan Bab 1 Fisika Dasar"
-                placeholderTextColor={Colors.textMuted}
                 value={title}
                 onChangeText={setTitle}
+                onClear={() => setTitle('')}
               />
 
-              <Text style={styles.label}>Mata Pelajaran</Text>
-              <TextInput
-                style={styles.input}
+              <FormInput
+                label="Mata Pelajaran"
+                icon="book-outline"
                 placeholder="Contoh: Fisika Dasar / Matematika"
-                placeholderTextColor={Colors.textMuted}
                 value={subject}
                 onChangeText={setSubject}
+                onClear={() => setSubject('')}
               />
 
               <View style={styles.row}>
                 <View style={{ flex: 1, marginRight: 6 }}>
-                  <Text style={styles.label}>Batas Tanggal (YYYY-MM-DD)</Text>
-                  <TextInput
-                    style={styles.input}
+                  <FormInput
+                    label="Batas Tanggal (YYYY-MM-DD)"
+                    icon="calendar-outline"
                     placeholder="2026-09-30"
-                    placeholderTextColor={Colors.textMuted}
                     value={deadline}
                     onChangeText={setDeadline}
                   />
                 </View>
                 <View style={{ flex: 1, marginLeft: 6 }}>
-                  <Text style={styles.label}>Batas Jam (HH:mm)</Text>
-                  <TextInput
-                    style={styles.input}
+                  <FormInput
+                    label="Batas Jam (HH:mm)"
+                    icon="time-outline"
                     placeholder="23:59"
-                    placeholderTextColor={Colors.textMuted}
                     value={deadlineTime}
                     onChangeText={setDeadlineTime}
                   />
@@ -692,6 +715,14 @@ export default function TugasScreen() {
           </View>
         </View>
       </Modal>
+
+      <ModernAlertModal
+        visible={alertInfo.visible}
+        type={alertInfo.type}
+        title={alertInfo.title}
+        message={alertInfo.message}
+        onConfirm={() => setAlertInfo((prev) => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 }

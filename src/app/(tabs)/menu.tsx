@@ -62,10 +62,24 @@ export default function MenuScreen() {
       value: `${reminders.filter((r) => r.enabled).length} Aktif`,
       onPress: () => router.push('/reminder'),
     },
+    {
+      id: 'notifikasi',
+      title: 'Pusat Notifikasi',
+      icon: 'notifications-outline' as const,
+      value: 'Riwayat & Alarm',
+      onPress: () => router.push('/notifikasi' as any),
+    },
   ];
 
   // Section 2: Produktivitas & Analisis (100% Berfungsi)
   const productivityItems = [
+    {
+      id: 'pomodoro',
+      title: 'Timer Pomodoro',
+      icon: 'timer-outline' as const,
+      value: 'Fokus Belajar',
+      onPress: () => router.push('/pomodoro' as any),
+    },
     {
       id: 'statistik',
       title: 'Statistik & Jam Belajar',
@@ -221,8 +235,7 @@ export default function MenuScreen() {
 
         {/* Footer Brand */}
         <View style={styles.footer}>
-          <Text style={styles.footerBrand}>EduPlaner v1.0.0</Text>
-          <Text style={styles.footerSub}>Aplikasi Manajemen Belajar & Agenda Pelajar Pintar</Text>
+          <Text style={styles.footerBrand}>EduPlaner v2.1.4</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

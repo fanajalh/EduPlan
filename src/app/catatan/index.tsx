@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
-  Alert,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +20,8 @@ import { FileExportService } from '@/services/fileExport';
 import { EmptyState } from '@/components/EmptyState';
 import { CuteCharacter } from '@/components/CuteCharacter';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
+import { ModernAlertModal, AlertType } from '@/components/ModernAlertModal';
+import { FormInput } from '@/components/FormInput';
 
 function formatNoteDate(dateStr: string): string {
   try {
@@ -60,6 +62,19 @@ export default function CatatanScreen() {
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('Casual');
   const [pinned, setPinned] = useState(false);
+
+  // Styled alert state
+  const [alertInfo, setAlertInfo] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: AlertType;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'warning',
+  });
 
   // Filter & sort notes (Pinned notes ALWAYS on top!)
   const filteredNotes = useMemo(() => {
@@ -112,7 +127,13 @@ export default function CatatanScreen() {
 
   const handleSave = async () => {
     if (!title.trim() && !content.trim()) {
-      Alert.alert('Perhatian', 'Catatan tidak boleh kosong!');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      setAlertInfo({
+        visible: true,
+        type: 'warning',
+        title: 'Bidang Wajib Diisi',
+        message: 'Catatan tidak boleh kosong. Silakan tuliskan judul atau isi catatan terlebih dahulu.',
+      });
       return;
     }
 
@@ -538,14 +559,18 @@ export default function CatatanScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.label}>Judul Catatan</Text>
-              <TextInput
-                style={styles.input}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 16 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              <FormInput
+                label="Judul Catatan"
+                icon="document-text-outline"
                 placeholder="Judul catatan atau rangkuman..."
-                placeholderTextColor={Colors.textSecondary}
                 value={title}
                 onChangeText={setTitle}
+                onClear={() => setTitle('')}
               />
 
               <Text style={styles.label}>Pilih Kategori</Text>
@@ -626,6 +651,14 @@ export default function CatatanScreen() {
         itemName={deletingNote?.title}
         onConfirm={confirmDeleteNote}
         onCancel={() => setDeletingNote(null)}
+      />
+
+      <ModernAlertModal
+        visible={alertInfo.visible}
+        type={alertInfo.type}
+        title={alertInfo.title}
+        message={alertInfo.message}
+        onConfirm={() => setAlertInfo((prev) => ({ ...prev, visible: false }))}
       />
     </>
   );
@@ -754,11 +787,6 @@ const styles = StyleSheet.create({
   momentCardActive: {
     borderWidth: 2.5,
     borderColor: '#FFFFFF',
-    shadowColor: Colors.periwinkle,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
   },
   momentTitle: {
     fontFamily: Fonts.extraBold,
@@ -988,7 +1016,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     paddingHorizontal: 22,
     paddingTop: 12,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
     maxHeight: '90%',
   },
   dragHandle: {

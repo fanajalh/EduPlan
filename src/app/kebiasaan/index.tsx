@@ -6,8 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
-  TextInput,
-  Alert,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +18,8 @@ import { HabitItem } from '@/types';
 import { EmptyState } from '@/components/EmptyState';
 import { CuteCharacter } from '@/components/CuteCharacter';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
+import { ModernAlertModal, AlertType } from '@/components/ModernAlertModal';
+import { FormInput } from '@/components/FormInput';
 import { notificationService } from '@/services/notificationService';
 
 const HABIT_CATEGORIES = [
@@ -55,6 +55,19 @@ export default function KebiasaanScreen() {
   const [category, setCategory] = useState('Belajar');
   const [selectedIcon, setSelectedIcon] = useState<keyof typeof Ionicons.glyphMap>('book-outline');
   const [targetDays, setTargetDays] = useState(7);
+
+  // Styled alert state
+  const [alertInfo, setAlertInfo] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: AlertType;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'warning',
+  });
 
   const today = new Date();
   const todayDateStr = today.toISOString().split('T')[0];
@@ -137,7 +150,13 @@ export default function KebiasaanScreen() {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert('Perhatian', 'Nama target kebiasaan wajib diisi!');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      setAlertInfo({
+        visible: true,
+        type: 'warning',
+        title: 'Bidang Wajib Diisi',
+        message: 'Silakan masukkan nama target kebiasaan terlebih dahulu sebelum menyimpan.',
+      });
       return;
     }
 
@@ -444,15 +463,21 @@ export default function KebiasaanScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalForm}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={styles.modalForm}
+              contentContainerStyle={{ paddingBottom: 16 }}
+              keyboardShouldPersistTaps="handled"
+            >
               {/* Title Input */}
-              <Text style={styles.fieldLabel}>Nama Rutinitas / Kebiasaan *</Text>
-              <TextInput
-                style={styles.textInput}
+              <FormInput
+                label="Nama Rutinitas / Kebiasaan"
+                required
+                icon="flame-outline"
                 placeholder="Contoh: Belajar Fokus 45 Menit, Baca Modul"
-                placeholderTextColor={Colors.textMuted}
                 value={title}
                 onChangeText={setTitle}
+                onClear={() => setTitle('')}
               />
 
               {/* Category Picker */}
@@ -570,6 +595,14 @@ export default function KebiasaanScreen() {
         itemName={deletingHabit?.title}
         onConfirm={confirmDeleteHabit}
         onCancel={() => setDeletingHabit(null)}
+      />
+
+      <ModernAlertModal
+        visible={alertInfo.visible}
+        type={alertInfo.type}
+        title={alertInfo.title}
+        message={alertInfo.message}
+        onConfirm={() => setAlertInfo((prev) => ({ ...prev, visible: false }))}
       />
     </SafeAreaView>
   );
@@ -917,7 +950,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     paddingHorizontal: 22,
     paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
     maxHeight: '85%',
   },
   sheetHandle: {

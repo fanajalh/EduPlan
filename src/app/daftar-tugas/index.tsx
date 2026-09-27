@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
-  Alert,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +20,8 @@ import { FileExportService } from '@/services/fileExport';
 import { EmptyState } from '@/components/EmptyState';
 import { CuteCharacter } from '@/components/CuteCharacter';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
+import { ModernAlertModal, AlertType } from '@/components/ModernAlertModal';
+import { FormInput } from '@/components/FormInput';
 import { notificationService } from '@/services/notificationService';
 
 function getPriorityColor(priority: TaskPriority) {
@@ -88,6 +90,19 @@ export default function DaftarTugasScreen() {
   const [priority, setPriority] = useState<TaskPriority>('sedang');
   const [notes, setNotes] = useState('');
 
+  // Styled alert state
+  const [alertInfo, setAlertInfo] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: AlertType;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'warning',
+  });
+
   const todayStr = new Date().toISOString().split('T')[0];
 
   const filteredTasks = tasks.filter((task) => {
@@ -133,11 +148,23 @@ export default function DaftarTugasScreen() {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert('Perhatian', 'Judul tugas wajib diisi!');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      setAlertInfo({
+        visible: true,
+        type: 'warning',
+        title: 'Bidang Wajib Diisi',
+        message: 'Silakan masukkan judul tugas terlebih dahulu sebelum menyimpan.',
+      });
       return;
     }
     if (!subject.trim()) {
-      Alert.alert('Perhatian', 'Mata pelajaran wajib diisi!');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      setAlertInfo({
+        visible: true,
+        type: 'warning',
+        title: 'Bidang Wajib Diisi',
+        message: 'Silakan masukkan nama mata pelajaran untuk tugas ini.',
+      });
       return;
     }
 
@@ -552,42 +579,46 @@ export default function DaftarTugasScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.label}>Judul Tugas</Text>
-              <TextInput
-                style={styles.input}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 16 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              <FormInput
+                label="Judul Tugas"
+                required
+                icon="document-text-outline"
                 placeholder="Contoh: Latihan Soal Bab 4..."
-                placeholderTextColor={Colors.textSecondary}
                 value={title}
                 onChangeText={setTitle}
+                onClear={() => setTitle('')}
               />
 
-              <Text style={styles.label}>Mata Pelajaran</Text>
-              <TextInput
-                style={styles.input}
+              <FormInput
+                label="Mata Pelajaran"
+                required
+                icon="book-outline"
                 placeholder="Contoh: Matematika, Fisika, Biologi..."
-                placeholderTextColor={Colors.textSecondary}
                 value={subject}
                 onChangeText={setSubject}
+                onClear={() => setSubject('')}
               />
 
               <View style={styles.formRow}>
                 <View style={styles.formHalf}>
-                  <Text style={styles.label}>Tenggat Tanggal</Text>
-                  <TextInput
-                    style={styles.input}
+                  <FormInput
+                    label="Tenggat Tanggal"
+                    icon="calendar-outline"
                     placeholder="YYYY-MM-DD"
-                    placeholderTextColor={Colors.textSecondary}
                     value={deadline}
                     onChangeText={setDeadline}
                   />
                 </View>
                 <View style={styles.formHalf}>
-                  <Text style={styles.label}>Jam (HH:mm)</Text>
-                  <TextInput
-                    style={styles.input}
+                  <FormInput
+                    label="Jam (HH:mm)"
+                    icon="time-outline"
                     placeholder="23:59"
-                    placeholderTextColor={Colors.textSecondary}
                     value={deadlineTime}
                     onChangeText={setDeadlineTime}
                   />
@@ -654,6 +685,14 @@ export default function DaftarTugasScreen() {
         itemName={deletingTask?.title}
         onConfirm={confirmDeleteTask}
         onCancel={() => setDeletingTask(null)}
+      />
+
+      <ModernAlertModal
+        visible={alertInfo.visible}
+        type={alertInfo.type}
+        title={alertInfo.title}
+        message={alertInfo.message}
+        onConfirm={() => setAlertInfo((prev) => ({ ...prev, visible: false }))}
       />
     </SafeAreaView>
   );
@@ -923,7 +962,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     paddingHorizontal: 22,
     paddingTop: 12,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
     maxHeight: '90%',
   },
   dragHandle: {

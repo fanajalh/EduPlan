@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
-  Alert,
   Platform,
   Dimensions,
 } from 'react-native';
@@ -22,6 +21,8 @@ import { EmptyState } from '@/components/EmptyState';
 import { CuteCharacter } from '@/components/CuteCharacter';
 import { CustomSwitch } from '@/components/CustomSwitch';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
+import { ModernAlertModal, AlertType } from '@/components/ModernAlertModal';
+import { FormInput } from '@/components/FormInput';
 import { notificationService } from '@/services/notificationService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -64,6 +65,19 @@ export default function ReminderScreen() {
   const [time, setTime] = useState('07:00');
   const [repeat, setRepeat] = useState('Hari Kerja (Sen - Jum)');
   const [notes, setNotes] = useState('');
+
+  // Styled alert state
+  const [alertInfo, setAlertInfo] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: AlertType;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'warning',
+  });
 
   const handleGoBack = () => {
     if (router.canGoBack()) {
@@ -151,7 +165,13 @@ export default function ReminderScreen() {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert('Perhatian', 'Judul alarm / pengingat wajib diisi!');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      setAlertInfo({
+        visible: true,
+        type: 'warning',
+        title: 'Bidang Wajib Diisi',
+        message: 'Silakan masukkan judul alarm atau pengingat terlebih dahulu sebelum menyimpan.',
+      });
       return;
     }
 
@@ -339,9 +359,11 @@ export default function ReminderScreen() {
 
         {/* Section Header */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Daftar Alarm</Text>
-          <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>{filteredReminders.length}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={styles.sectionTitle}>Daftar Alarm</Text>
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeText}>{filteredReminders.length}</Text>
+            </View>
           </View>
         </View>
 
@@ -463,15 +485,21 @@ export default function ReminderScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalForm}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={styles.modalForm}
+              contentContainerStyle={{ paddingBottom: 16 }}
+              keyboardShouldPersistTaps="handled"
+            >
               {/* Title Input */}
-              <Text style={styles.fieldLabel}>Judul Alarm / Pengingat *</Text>
-              <TextInput
-                style={styles.textInput}
+              <FormInput
+                label="Judul Alarm / Pengingat"
+                required
+                icon="alarm-outline"
                 placeholder="Contoh: Kuliah Algoritma, Kuis Kimia"
-                placeholderTextColor={Colors.textMuted}
                 value={title}
                 onChangeText={setTitle}
+                onClear={() => setTitle('')}
               />
 
               {/* Type Selection Chips */}
@@ -509,11 +537,11 @@ export default function ReminderScreen() {
               </View>
 
               {/* Time Input */}
-              <Text style={styles.fieldLabel}>Waktu Alarm (Format HH:mm) *</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Contoh: 07:00 atau 19:30"
-                placeholderTextColor={Colors.textMuted}
+              <FormInput
+                label="Waktu Alarm (Format HH:mm)"
+                required
+                icon="time-outline"
+                placeholder="07:00 atau 19:30"
                 value={time}
                 onChangeText={setTime}
                 keyboardType="numbers-and-punctuation"
@@ -652,6 +680,14 @@ export default function ReminderScreen() {
           </View>
         </View>
       </Modal>
+
+      <ModernAlertModal
+        visible={alertInfo.visible}
+        type={alertInfo.type}
+        title={alertInfo.title}
+        message={alertInfo.message}
+        onConfirm={() => setAlertInfo((prev) => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 }
@@ -802,9 +838,9 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     marginBottom: 12,
-    gap: 8,
   },
   sectionTitle: {
     fontFamily: Fonts.bold,
@@ -937,7 +973,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     paddingHorizontal: 22,
     paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
     maxHeight: '85%',
   },
   sheetHandle: {
@@ -1071,7 +1107,7 @@ const styles = StyleSheet.create({
   // Alarm Ringing Modal
   alarmModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
@@ -1147,11 +1183,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
   alarmDismissBtnText: {
     fontFamily: Fonts.bold,
